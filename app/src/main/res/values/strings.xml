@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Location Faker</string>
+    <string name="clear_fake_location">Clear fake location</string>
+    <string name="developer_options">Developer options</string>
+    <string name="enable_locations_message">Location permission is needed.</string>
+    <string name="enable_mock_locations_message">Enable mock locations in Settings ➜ Developer options</string>
+    <string name="fake_location_enabled">Fake location enabled</string>
+    <string name="grant">Grant</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
+    <string name="search">Search</string>
+    <string name="settings">Settings</string>
+    <string name="stop">Stop</string>
+</resources>
