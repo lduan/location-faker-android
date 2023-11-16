@@ -1,8 +1,10 @@
 package com.duanstar.locationfaker.fake_location
 
 import com.google.android.gms.maps.model.LatLng
+import com.squareup.moshi.JsonClass
 import java.text.DecimalFormat
 
+@JsonClass(generateAdapter = true)
 data class FakeLocation(
     val latitude: Double,
     val longitude: Double,
@@ -13,9 +15,15 @@ data class FakeLocation(
         private val FORMATTER = DecimalFormat("#.#####")
     }
 
+    @Transient
     val latLng = LatLng(latitude, longitude)
 
-    val title: String = name ?: "${FORMATTER.format(latitude)}, ${FORMATTER.format(longitude)}"
-}
+    @Transient
+    val position = "${FORMATTER.format(latitude)}, ${FORMATTER.format(longitude)}"
 
-fun LatLng.toFakeLocation() = FakeLocation(latitude = latitude, longitude = longitude)
+    @Transient
+    val title: String = name ?: position
+
+    @Transient
+    val subtitle: String? = if (name != null) position else null
+}

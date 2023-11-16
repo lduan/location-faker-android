@@ -1,4 +1,4 @@
-package com.duanstar.locationfaker.permission
+package com.duanstar.locationfaker.settings
 
 import android.app.AppOpsManager
 import android.content.Context
@@ -22,24 +22,20 @@ class MockLocationSetting @Inject constructor(
     @ProcessLifecycle private val processLifecycle: Lifecycle
 ) {
 
-    private val _enabled = MutableStateFlow(isMockLocationEnabled(context))
-
+    private val _enabled = MutableStateFlow(isMockLocationEnabled())
+    
     val enabled = _enabled.asStateFlow()
 
     init {
         processLifecycle.addObserver(object : DefaultLifecycleObserver {
+            // Check if mock locations are enabled whenever we foreground the app.
             override fun onStart(owner: LifecycleOwner) {
-                this@MockLocationSetting._enabled.value = isMockLocationEnabled(context)
+                _enabled.value = isMockLocationEnabled()
             }
         })
     }
 
-    /**
-     * Check if the app has the permission to mock locations.
-     *
-     * @return `true` if the app can mock locations; otherwise, `false`.
-     */
-    private fun isMockLocationEnabled(context: Context): Boolean {
+    private fun isMockLocationEnabled(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val manager = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
             try {

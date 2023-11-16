@@ -53,7 +53,7 @@ class FakeLocationService : LifecycleService() {
         launch {
             fakeLocationStream.fakeLocation.filterNotNull().collect { fakeLocation ->
                 timer?.cancel()
-                timer = timer(initialDelay = 0, period = 5 * 1000) {
+                timer = timer(initialDelay = 0, period = 15 * 1000) {
                     try {
                         val location = Location("fakeLocationProvider").apply {
                             altitude = 0.0

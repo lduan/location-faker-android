@@ -5,6 +5,7 @@ import com.duanstar.locationfaker.fake_location.FakeLocationService
 import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine
 import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine.State
 import com.duanstar.locationfaker.fake_location.FakeLocationStream
+import com.google.android.libraries.places.api.Places
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collectLatest
@@ -27,6 +28,8 @@ class App : Application() {
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
+
+        Places.initialize(this, BuildConfig.MAPS_API_KEY)
 
         coroutineScope.launch {
             combine(stateMachine.state, stream.fakeLocation) { state, fakeLocation ->

@@ -1,6 +1,6 @@
 package com.duanstar.locationfaker.fake_location
 
-import com.duanstar.locationfaker.permission.MockLocationSetting
+import com.duanstar.locationfaker.settings.MockLocationSetting
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

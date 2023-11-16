@@ -58,6 +58,7 @@ android {
 dependencies {
 
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.preference:preference-ktx:1.2.1")
 
     // Compose
     implementation(platform("androidx.compose:compose-bom:2023.03.00"))
@@ -81,12 +82,19 @@ dependencies {
     implementation("com.google.accompanist:accompanist-permissions:0.30.1")
     implementation("com.google.maps.android:maps-ktx:5.0.0")
     implementation("com.google.maps.android:maps-compose:3.1.1")
+    implementation("com.google.maps.android:places-ktx:3.0.0")
 
     // Lifecycle
     implementation("androidx.lifecycle:lifecycle-service:2.6.2")
     implementation("androidx.lifecycle:lifecycle-process:2.6.2")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+
+    // Moshi
+    val moshiVersion = "1.15.0"
+    implementation("com.squareup.moshi:moshi:$moshiVersion")
+    implementation("com.squareup.moshi:moshi-adapters:$moshiVersion")
+    kapt("com.squareup.moshi:moshi-kotlin-codegen:$moshiVersion")
 
     // Retrofit
     val retrofitVersion = "2.9.0"

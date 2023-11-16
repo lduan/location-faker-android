@@ -1,13 +1,17 @@
 package com.duanstar.locationfaker.di
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.location.Geocoder
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.preference.PreferenceManager
 import com.duanstar.locationfaker.BuildConfig
 
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.net.PlacesClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -52,10 +56,22 @@ class AppModule {
         }.build()
     }
 
+    @Provides
+    @Singleton
+    fun providePlacesClient(@ApplicationContext context: Context): PlacesClient {
+        return Places.createClient(context)
+    }
+
     @ProcessLifecycle
     @Provides
     @Singleton
     fun provideProcessLifecycle(): Lifecycle {
         return ProcessLifecycleOwner.get().lifecycle
+    }
+
+    @Provides
+    @Singleton
+    fun provideSharedPrefs(@ApplicationContext context: Context): SharedPreferences {
+        return PreferenceManager.getDefaultSharedPreferences(context)
     }
 }
