@@ -1,6 +1,7 @@
 package com.duanstar.locationfaker.feature.main
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.material.AlertDialog
@@ -44,9 +45,10 @@ fun LocationPermissionRequiredDialog(
     )
 }
 
-@Preview
+@Preview(name = "Light", uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-fun LocationPermissionRequiredDialogPreview() {
+private fun LocationPermissionRequiredDialogPreview() {
     AppTheme {
         LocationPermissionRequiredDialog(
             onDismiss = {}

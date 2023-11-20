@@ -7,6 +7,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
+/**
+ * [AnimatedVisibility] with fade-in/out animations.
+ */
 @Composable
 fun FadeAnimatedVisibility(
     visible: Boolean,

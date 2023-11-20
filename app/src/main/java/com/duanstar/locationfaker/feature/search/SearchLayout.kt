@@ -1,5 +1,6 @@
 package com.duanstar.locationfaker.feature.search
 
+import android.content.res.Configuration
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -31,13 +32,16 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duanstar.locationfaker.R
 import com.duanstar.locationfaker.fake_location.FakeLocation
+import com.duanstar.locationfaker.ui.theme.AppTheme
 import com.duanstar.locationfaker.ui.theme.Dimensions.marginVertical
 import com.duanstar.locationfaker.ui.theme.Dimensions.spacing
+import com.duanstar.locationfaker.ui.theme.primaryOnSurface
 import com.duanstar.locationfaker.ui.widgets.CenteredRow
 import com.duanstar.locationfaker.ui.widgets.SingleLineText
 import com.google.android.gms.maps.model.LatLngBounds
@@ -164,9 +168,9 @@ private fun FavoriteRow(
     ) {
         Icon(
             imageVector = Icons.Filled.Star,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.favorite),
             modifier = Modifier.minimumInteractiveComponentSize(),
-            tint = MaterialTheme.colors.primaryVariant
+            tint = MaterialTheme.colors.primaryOnSurface
         )
         Spacer(Modifier.size(spacing))
         Column(modifier = Modifier.weight(1f)) {
@@ -200,9 +204,9 @@ private fun AutocompletePredictionRow(
     ) {
         Icon(
             imageVector = Icons.Filled.Place,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.place),
             modifier = Modifier.minimumInteractiveComponentSize(),
-            tint = MaterialTheme.colors.primaryVariant
+            tint = MaterialTheme.colors.primaryOnSurface
         )
         Spacer(Modifier.size(spacing))
         Column {
@@ -213,5 +217,33 @@ private fun AutocompletePredictionRow(
                 modifier = Modifier.alpha(ContentAlpha.medium)
             )
         }
+    }
+}
+
+@Preview(name = "Light", uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SearchLayoutPreview() {
+    val mountDoom = FakeLocation(
+        name = "Mount Doom",
+        latitude = -39.290833,
+        longitude = 175.562222
+    )
+    val rivendell = FakeLocation(
+        name = "Rivendell",
+        latitude = -45.422633,
+        longitude = 167.346667
+    )
+    AppTheme {
+        SearchLayout(
+            favorites = listOf(mountDoom, rivendell),
+            autocompletePredictions = listOf(),
+            status = ApiStatus.OK,
+            removeFavorite = {},
+            onSearchQueryChanged = {},
+            setFakeLocation = {},
+            setFakeLocationFromAutocomplete = { true },
+            onBack = {}
+        )
     }
 }

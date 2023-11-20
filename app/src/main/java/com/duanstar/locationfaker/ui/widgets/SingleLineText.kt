@@ -15,6 +15,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 
+/**
+ * Composable for a single-lined [Text] and ellipses overflow.
+ */
 @Composable
 fun SingleLineText(
     text: String,

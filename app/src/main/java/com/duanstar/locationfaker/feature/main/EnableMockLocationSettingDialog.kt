@@ -2,6 +2,7 @@ package com.duanstar.locationfaker.feature.main
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.provider.Settings
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Text
@@ -9,7 +10,9 @@ import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import com.duanstar.locationfaker.R
+import com.duanstar.locationfaker.ui.theme.AppTheme
 
 @Composable
 fun EnableMockLocationSettingDialog(onDismiss: () -> Unit) {
@@ -38,6 +41,15 @@ fun EnableMockLocationSettingDialog(onDismiss: () -> Unit) {
             Text(text = stringResource(R.string.enable_mock_locations_message))
         }
     )
+}
+
+@Preview(name = "Light", uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun EnableMockLocationSettingDialogPreview() {
+    AppTheme {
+        EnableMockLocationSettingDialog(onDismiss = {})
+    }
 }
 
 private val Context.isDeveloperOptionsEnabled: Boolean

@@ -5,16 +5,16 @@ import androidx.navigation.navArgument
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 
-sealed interface Screens {
+sealed interface Screen {
 
     val route: String
 
-    object Main {
-        const val route = "main"
+    object Main : Screen {
+        override val route = "main"
     }
 
-    object Search {
-        const val route = "search?swLat={swLat},swLng={swLng},neLat={neLat},neLng={neLng}"
+    object Search : Screen {
+        override val route = "search?swLat={swLat},swLng={swLng},neLat={neLat},neLng={neLng}"
 
         val arguments = listOf(
             navArgument("swLat") { nullable = true },

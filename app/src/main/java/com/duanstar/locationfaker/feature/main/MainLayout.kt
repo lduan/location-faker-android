@@ -1,6 +1,7 @@
 package com.duanstar.locationfaker.feature.main
 
 import android.annotation.SuppressLint
+import android.content.res.Configuration
 import android.location.Location
 import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.LinearEasing
@@ -54,16 +55,19 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duanstar.locationfaker.R
 import com.duanstar.locationfaker.fake_location.FakeLocation
 import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine
+import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine.State.OFF
 import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine.State.ON
 import com.duanstar.locationfaker.permission.anyGranted
 import com.duanstar.locationfaker.permission.rememberLocationPermission
 import com.duanstar.locationfaker.permission.rememberNotificationsPermission
+import com.duanstar.locationfaker.ui.theme.AppTheme
 import com.duanstar.locationfaker.ui.theme.Dimensions.cardElevation
 import com.duanstar.locationfaker.ui.theme.Dimensions.padding
 import com.duanstar.locationfaker.ui.theme.primaryOnSurface
@@ -78,6 +82,8 @@ import com.duanstar.locationfaker.utils.onCameraIdle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.shouldShowRationale
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.maps.android.compose.CameraPositionState
@@ -304,7 +310,11 @@ private fun SearchBar(
                     style = MaterialTheme.typography.body2
                 )
                 if (fakeLocation.name?.isEmpty() == true) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = MaterialTheme.colors.primaryOnSurface,
+                        strokeWidth = 2.dp
+                    )
                 }
             } else {
                 SingleLineText(
@@ -371,7 +381,9 @@ private fun SearchBar(
                                 Icon(
                                     imageVector = Icons.Filled.Star,
                                     contentDescription = stringResource(R.string.added_to_favorites),
-                                    tint = MaterialTheme.colors.primaryOnSurface.copy(alpha = LocalContentAlpha.current)
+                                    tint = with(MaterialTheme.colors) {
+                                        primaryOnSurface.copy(if (isLight) ContentAlpha.high else ContentAlpha.medium)
+                                    }
                                 )
                             } else {
                                 Icon(
@@ -419,5 +431,31 @@ private fun Map(
                 Marker(state = MarkerState(fakeLocation.latLng))
             }
         }
+    }
+}
+
+@Preview(name = "Light", uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun MainLayoutPreview() {
+    val fakeLocation = FakeLocation(
+        name = "Hogwarts",
+        latitude = 57.388222,
+        longitude = 3.711944
+    )
+    val myLatLng = LatLng(57.388322, 3.712944)
+    AppTheme {
+        MainLayout(
+            cameraPositionState = CameraPositionState(CameraPosition.fromLatLngZoom(myLatLng, 15f)),
+            fakeLocation = fakeLocation,
+            favorites = listOf(fakeLocation),
+            state = OFF,
+            mockLocationsEnabled = true,
+            setFakeLocation = { },
+            setState = { },
+            toggleSaved = { },
+            getLastLocation = { null },
+            onSearchClick = { }
+        )
     }
 }

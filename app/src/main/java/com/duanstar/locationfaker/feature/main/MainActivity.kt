@@ -11,7 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.duanstar.locationfaker.feature.search.SearchLayout
-import com.duanstar.locationfaker.ui.Screens
+import com.duanstar.locationfaker.ui.Screen
 import com.duanstar.locationfaker.ui.theme.AppTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -33,18 +33,18 @@ class MainActivity : ComponentActivity() {
             AppTheme {
                 NavHost(
                     navController = navController,
-                    startDestination = Screens.Main.route,
+                    startDestination = Screen.Main.route,
                 ) {
-                    composable(Screens.Main.route) {
+                    composable(Screen.Main.route) {
                         MainLayout(
                             onSearchClick = { bounds ->
-                                navController.navigate(Screens.Search.makeRoute(bounds))
+                                navController.navigate(Screen.Search.makeRoute(bounds))
                             }
                         )
                     }
 
-                    composable(Screens.Search.route, arguments = Screens.Search.arguments) {
-                        val cameraBounds = Screens.Search.getBoundsArgument(it)
+                    composable(Screen.Search.route, arguments = Screen.Search.arguments) {
+                        val cameraBounds = Screen.Search.getBoundsArgument(it)
                         SearchLayout(
                             cameraBounds = cameraBounds,
                             onBack = navController::popBackStack
