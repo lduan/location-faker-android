@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -86,6 +87,8 @@ fun SearchLayout(
                     SearchTextField(
                         query = "",
                         onQueryChanged = onSearchQueryChanged,
+                        backgroundColor = Color.Transparent,
+                        contentColor = MaterialTheme.colors.onPrimary,
                         hint = stringResource(R.string.search_hint)
                     )
                 },

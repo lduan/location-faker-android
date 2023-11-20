@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.App" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.App" parent="android:Theme.Material.NoActionBar">
         <item name="android:colorPrimary">@color/color_primary</item>
         <item name="android:colorPrimaryDark">@color/color_primary_variant</item>
     </style>

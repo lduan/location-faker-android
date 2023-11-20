@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.ContentAlpha.medium
+import androidx.compose.material.ContentAlpha
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
@@ -39,7 +39,8 @@ import com.duanstar.locationfaker.ui.widgets.CenteredRow
 fun SearchTextField(
     query: String,
     onQueryChanged: (String) -> Unit,
-    backgroundColor: Color = MaterialTheme.colors.primary,
+    backgroundColor: Color = MaterialTheme.colors.surface,
+    contentColor: Color = contentColorFor(backgroundColor),
     hint: String = "",
 ) {
     val focusManager = LocalFocusManager.current
@@ -93,12 +94,12 @@ fun SearchTextField(
             ),
             colors = TextFieldDefaults.textFieldColors(
                 backgroundColor = backgroundColor,
-                cursorColor = contentColorFor(backgroundColor).copy(alpha = medium),
+                cursorColor = contentColor.copy(alpha = ContentAlpha.medium),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
-                leadingIconColor = contentColorFor(backgroundColor).copy(alpha = IconOpacity),
-                trailingIconColor = contentColorFor(backgroundColor).copy(alpha = IconOpacity),
-                placeholderColor = contentColorFor(backgroundColor).copy(alpha = medium)
+                leadingIconColor = contentColor.copy(alpha = IconOpacity),
+                trailingIconColor = contentColor.copy(alpha = IconOpacity),
+                placeholderColor = contentColor.copy(alpha = ContentAlpha.medium)
             )
         )
     }
