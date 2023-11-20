@@ -1,6 +1,7 @@
 package com.duanstar.locationfaker.feature.search
 
 import android.content.res.Configuration
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -40,6 +42,7 @@ import com.duanstar.locationfaker.R
 import com.duanstar.locationfaker.fake_location.FakeLocation
 import com.duanstar.locationfaker.ui.theme.AppTheme
 import com.duanstar.locationfaker.ui.theme.Dimensions.marginVertical
+import com.duanstar.locationfaker.ui.theme.Dimensions.padding
 import com.duanstar.locationfaker.ui.theme.Dimensions.spacing
 import com.duanstar.locationfaker.ui.theme.primaryOnSurface
 import com.duanstar.locationfaker.ui.widgets.CenteredRow
@@ -149,6 +152,21 @@ fun SearchLayout(
                         }
                     }
                 )
+            }
+            item {
+                if (autocompletePredictions.isNotEmpty()) {
+                    Image(
+                        painter = painterResource(
+                            if (MaterialTheme.colors.isLight) {
+                                com.google.android.libraries.places.R.drawable.places_powered_by_google_light
+                            } else {
+                                com.google.android.libraries.places.R.drawable.places_powered_by_google_dark
+                            }
+                        ),
+                        contentDescription = null,
+                        modifier = Modifier.padding(padding)
+                    )
+                }
             }
         }
     }
