@@ -63,11 +63,14 @@ fun SearchTextField(
             onValueChange = {
                 textState = it
             },
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester),
+            textStyle = MaterialTheme.typography.body1,
             placeholder = {
                 Text(
                     text = hint,
-                    modifier = Modifier.padding(start = spacing),
-                    style = MaterialTheme.typography.body1
+                    modifier = Modifier.padding(start = spacing)
                 )
             },
             trailingIcon = {
@@ -82,9 +85,6 @@ fun SearchTextField(
                     }
                 }
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(focusRequester),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(
                 onDone = {

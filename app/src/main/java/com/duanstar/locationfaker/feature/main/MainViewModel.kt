@@ -8,19 +8,20 @@ import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine
 import com.duanstar.locationfaker.fake_location.FakeLocationStream
 import com.duanstar.locationfaker.feature.favorites.FavoritesManager
 import com.duanstar.locationfaker.launch
-import com.duanstar.locationfaker.location.awaitAddress
-import com.duanstar.locationfaker.location.awaitLastLocation
-import com.duanstar.locationfaker.location.toShortAddress
 import com.duanstar.locationfaker.settings.MockLocationSetting
+import com.duanstar.locationfaker.utils.awaitAddress
+import com.duanstar.locationfaker.utils.awaitLastLocation
+import com.duanstar.locationfaker.utils.toShortAddress
 import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.maps.android.compose.CameraPositionState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
+    val cameraPositionState: CameraPositionState,
     private val favoritesManager: FavoritesManager,
     private val geocoder: Geocoder,
     private val locationClient: FusedLocationProviderClient,
@@ -31,7 +32,6 @@ class MainViewModel @Inject constructor(
 
     val fakeLocation: StateFlow<FakeLocation?> = stream.fakeLocation
     val favorites: StateFlow<List<FakeLocation>> = favoritesManager.favorites
-    val isGeocoding = MutableStateFlow(false)
     val mockLocationsEnabled: StateFlow<Boolean> = mockLocationSetting.enabled
     val state: StateFlow<FakeLocationStateMachine.State> = stateMachine.state
 
@@ -51,14 +51,10 @@ class MainViewModel @Inject constructor(
             stream.update(fakeLocation.copy(name = ""))
 
             launch {
-                isGeocoding.value = true
-
                 val latitude = fakeLocation.latitude
                 val longitude = fakeLocation.longitude
                 val address = geocoder.awaitAddress(latitude = latitude, longitude = longitude)?.toShortAddress()
                 stream.update(fakeLocation.copy(name = address))
-
-                isGeocoding.value = false
             }
         } else {
             stream.update(fakeLocation)

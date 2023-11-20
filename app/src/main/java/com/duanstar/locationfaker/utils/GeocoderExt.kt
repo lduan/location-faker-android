@@ -1,4 +1,4 @@
-package com.duanstar.locationfaker.location
+package com.duanstar.locationfaker.utils
 
 import android.location.Address
 import android.location.Geocoder

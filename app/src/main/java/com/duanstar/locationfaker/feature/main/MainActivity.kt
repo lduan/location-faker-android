@@ -11,8 +11,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.duanstar.locationfaker.feature.search.SearchLayout
+import com.duanstar.locationfaker.ui.Screens
 import com.duanstar.locationfaker.ui.theme.AppTheme
-import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -33,20 +33,20 @@ class MainActivity : ComponentActivity() {
             AppTheme {
                 NavHost(
                     navController = navController,
-                    startDestination = "main",
+                    startDestination = Screens.Main.route,
                 ) {
-                    composable("main") {
+                    composable(Screens.Main.route) {
                         MainLayout(
-                            onSearchClick = { position ->
-                                navController.navigate("search/${position.latitude}/${position.longitude}")
+                            onSearchClick = { bounds ->
+                                navController.navigate(Screens.Search.makeRoute(bounds))
                             }
                         )
                     }
-                    composable("search/{lat}/{lng}") {
-                        val lat = it.arguments?.getDouble("lat")!!
-                        val lng = it.arguments?.getDouble("lng")!!
+
+                    composable(Screens.Search.route, arguments = Screens.Search.arguments) {
+                        val cameraBounds = Screens.Search.getBoundsArgument(it)
                         SearchLayout(
-                            position = LatLng(lat, lng),
+                            cameraBounds = cameraBounds,
                             onBack = navController::popBackStack
                         )
                     }

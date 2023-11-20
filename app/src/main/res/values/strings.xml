@@ -1,6 +1,7 @@
 <resources>
-    <string name="app_name">Location Faker</string>
     <string name="add_to_favorites">Add to favorites</string>
+    <string name="api_error_message">Api error: %1$s</string>
+    <string name="app_name">Location Faker</string>
     <string name="added_to_favorites">Added to favorites</string>
     <string name="clear_fake_location">Clear fake location</string>
     <string name="clear_search_query">Clear search query</string>

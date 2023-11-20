@@ -4,16 +4,20 @@ import com.duanstar.locationfaker.BaseViewModel
 import com.duanstar.locationfaker.fake_location.FakeLocation
 import com.duanstar.locationfaker.fake_location.FakeLocationStream
 import com.duanstar.locationfaker.feature.favorites.FavoritesManager
+import com.duanstar.locationfaker.utils.bounds
+import com.duanstar.locationfaker.utils.moveTo
 import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.libraries.places.api.model.AutocompletePrediction
 import com.google.android.libraries.places.api.model.AutocompleteSessionToken
 import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.model.RectangularBounds
 import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.android.libraries.places.ktx.api.net.awaitFetchPlace
 import com.google.android.libraries.places.ktx.api.net.awaitFindAutocompletePredictions
+import com.google.maps.android.compose.CameraPositionState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,9 +27,10 @@ import kotlinx.coroutines.flow.mapLatest
 import timber.log.Timber
 import javax.inject.Inject
 
-@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
+    private val cameraPositionState: CameraPositionState,
     private val fakeLocationStream: FakeLocationStream,
     private val favoritesManager: FavoritesManager,
     private val placesClient: PlacesClient
@@ -37,9 +42,10 @@ class SearchViewModel @Inject constructor(
 
     private val queryStateFlow = MutableStateFlow<String?>(null)
 
+    private var locationBias: LatLngBounds? = null
     private var sessionToken: AutocompleteSessionToken? = null
 
-    val autocompleteResults: StateFlow<List<AutocompletePrediction>> = queryStateFlow.mapLatest { query ->
+    val autocompletePredictions: StateFlow<List<AutocompletePrediction>> = queryStateFlow.mapLatest { query ->
         if (query.isNullOrBlank()) {
             // If query is blank, immediately return no results.
             emptyList()
@@ -53,7 +59,11 @@ class SearchViewModel @Inject constructor(
             status.value = ApiStatus.OK
             try {
                 placesClient.awaitFindAutocompletePredictions {
-                    sessionToken = sessionToken
+                    Timber.e("bias=${cameraPositionState.bounds}")
+                    this@SearchViewModel.locationBias?.let {
+                        locationBias = RectangularBounds.newInstance(it)
+                    }
+                    sessionToken = this@SearchViewModel.sessionToken
                     setQuery(query)
                 }.autocompletePredictions
             } catch (e: ApiException) {
@@ -76,13 +86,13 @@ class SearchViewModel @Inject constructor(
 
     val status = MutableStateFlow<ApiStatus>(ApiStatus.OK)
 
-
     fun removeFavorite(favorite: FakeLocation) {
         favoritesManager.remove(favorite)
     }
 
     fun setFakeLocation(fakeLocation: FakeLocation) {
         fakeLocationStream.update(fakeLocation)
+        cameraPositionState.moveTo(fakeLocation.latLng)
     }
 
     suspend fun setFakeLocation(prediction: AutocompletePrediction): Boolean {
@@ -98,22 +108,20 @@ class SearchViewModel @Inject constructor(
             return false
         }
 
-        val latitude = place.latLng?.latitude
-        val longitude = place.latLng?.longitude
-        return if (latitude != null && longitude != null) {
-            val fakeLocation = FakeLocation(
-                latitude = latitude,
-                longitude = longitude,
-                name = place.name
-            )
-            fakeLocationStream.update(fakeLocation)
-            sessionToken = null
-            true
-        } else {
-            Timber.e("No latLng found for place=$place")
-            status.value = ApiStatus.Error("No location info found.")
-            false
-        }
+        // LatLng is non-null because we requested the field above.
+        val fakeLocation = FakeLocation(
+            latitude = place.latLng!!.latitude,
+            longitude = place.latLng!!.longitude,
+            name = place.name
+        )
+        fakeLocationStream.update(fakeLocation)
+        cameraPositionState.moveTo(fakeLocation.latLng)
+        sessionToken = null
+        return true
+    }
+
+    fun setLocationBias(bounds: LatLngBounds?) {
+        locationBias = bounds
     }
 
     fun setQuery(query: String) {

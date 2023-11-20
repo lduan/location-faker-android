@@ -1,4 +1,4 @@
-package com.duanstar.locationfaker.location
+package com.duanstar.locationfaker.utils
 
 import android.Manifest
 import android.location.Location
@@ -44,15 +44,5 @@ suspend fun FusedLocationProviderClient.awaitCurrentLocation(cancellationSource:
     }
 }
 
-@RequiresPermission(anyOf = [Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION])
-fun FusedLocationProviderClient.mockLocation(location: Location) {
-    setMockMode(true)
-    setMockLocation(location)
-}
-
-@RequiresPermission(anyOf = [Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION])
-fun FusedLocationProviderClient.stopMockLocation() {
-    setMockMode(false)
-}
-
-fun Location.toLatLng() = LatLng(latitude, longitude)
+val Location.latLng
+    get() = LatLng(latitude, longitude)

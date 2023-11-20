@@ -1,4 +1,4 @@
-package com.duanstar.locationfaker.ui
+package com.duanstar.locationfaker.ui.widgets
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope

@@ -14,8 +14,6 @@ import androidx.lifecycle.LifecycleService
 import com.duanstar.locationfaker.R
 import com.duanstar.locationfaker.feature.main.MainActivity
 import com.duanstar.locationfaker.launch
-import com.duanstar.locationfaker.location.mockLocation
-import com.duanstar.locationfaker.location.stopMockLocation
 import com.google.android.gms.location.FusedLocationProviderClient
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.filterNotNull
@@ -52,12 +50,13 @@ class FakeLocationService : LifecycleService() {
 
         launch {
             fakeLocationStream.fakeLocation.filterNotNull().collect { fakeLocation ->
+                // Android OS will kill this service unless we schedule periodic updates.
                 timer?.cancel()
-                timer = timer(initialDelay = 0, period = 15 * 1000) {
+                timer = timer(initialDelay = 0, period = 5 * 60 * 1000) {
                     try {
                         val location = Location("fakeLocationProvider").apply {
                             altitude = 0.0
-                            accuracy = 0f
+                            accuracy = 1f
                             bearing = 0f
                             latitude = fakeLocation.latitude
                             longitude = fakeLocation.longitude
@@ -65,7 +64,8 @@ class FakeLocationService : LifecycleService() {
                             time = System.currentTimeMillis()
                             elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
                         }
-                        locationClient.mockLocation(location)
+                        locationClient.setMockMode(true)
+                        locationClient.setMockLocation(location)
                         startForegroundNotification(fakeLocation)
                     } catch (e: SecurityException) {
                         Timber.e(e, "Mock location permission is not granted.")
@@ -82,10 +82,8 @@ class FakeLocationService : LifecycleService() {
 
     override fun onDestroy() {
         super.onDestroy()
-
-        timer?.cancel()
         try {
-            locationClient.stopMockLocation()
+            locationClient.setMockMode(false)
         } catch (e: SecurityException) {
             Timber.e(e, "Mock location permission is not granted.")
         }

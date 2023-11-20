@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.ContentAlpha.medium
+import androidx.compose.material.ContentAlpha
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
+import androidx.compose.material.SnackbarDuration
+import androidx.compose.material.SnackbarHost
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -21,10 +23,12 @@ import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -35,42 +39,46 @@ import com.duanstar.locationfaker.ui.theme.Dimensions.marginVertical
 import com.duanstar.locationfaker.ui.theme.Dimensions.spacing
 import com.duanstar.locationfaker.ui.widgets.CenteredRow
 import com.duanstar.locationfaker.ui.widgets.SingleLineText
-import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.libraries.places.api.model.AutocompletePrediction
 import kotlinx.coroutines.launch
 
 @Composable
 fun SearchLayout(
-    position: LatLng,
+    cameraBounds: LatLngBounds?,
     viewModel: SearchViewModel = hiltViewModel(),
     onBack: () -> Unit
 ) {
+    viewModel.setLocationBias(cameraBounds)
+
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
-    val autocompletePredictions by viewModel.autocompleteResults.collectAsStateWithLifecycle()
+    val autocompletePredictions by viewModel.autocompletePredictions.collectAsStateWithLifecycle()
+    val status by viewModel.status.collectAsStateWithLifecycle()
 
     SearchLayout(
-        position = position,
         favorites = favorites,
         autocompletePredictions = autocompletePredictions,
+        status = status,
         removeFavorite = viewModel::removeFavorite,
         onSearchQueryChanged = viewModel::setQuery,
         setFakeLocation = viewModel::setFakeLocation,
-        onPredictionClick = viewModel::setFakeLocation,
+        setFakeLocationFromAutocomplete = viewModel::setFakeLocation,
         onBack = onBack
     )
 }
 
 @Composable
 fun SearchLayout(
-    position: LatLng,
     favorites: List<FakeLocation>,
     autocompletePredictions: List<AutocompletePrediction>,
+    status: ApiStatus,
     removeFavorite: (FakeLocation) -> Unit,
     onSearchQueryChanged: (String) -> Unit,
     setFakeLocation: (FakeLocation) -> Unit,
-    onPredictionClick: suspend (AutocompletePrediction) -> Boolean,
+    setFakeLocationFromAutocomplete: suspend (AutocompletePrediction) -> Boolean,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     Scaffold(
         topBar = {
             TopAppBar(
@@ -90,6 +98,22 @@ fun SearchLayout(
                     }
                 }
             )
+        },
+        snackbarHost = { snackbarHostState ->
+            SnackbarHost(snackbarHostState)
+            LaunchedEffect(status) {
+                when (status) {
+                    is ApiStatus.Error -> {
+                        snackbarHostState.showSnackbar(
+                            message = context.getString(R.string.api_error_message, status.message.orEmpty()),
+                            duration = SnackbarDuration.Indefinite
+                        )
+                    }
+                    else -> {
+                        snackbarHostState.currentSnackbarData?.dismiss()
+                    }
+                }
+            }
         }
     ) { p ->
         val coroutineScope = rememberCoroutineScope()
@@ -112,7 +136,7 @@ fun SearchLayout(
                     prediction = prediction,
                     onClick = {
                         coroutineScope.launch {
-                            if (onPredictionClick(prediction)) {
+                            if (setFakeLocationFromAutocomplete(prediction)) {
                                 onBack()
                             }
                         }
@@ -147,14 +171,14 @@ private fun FavoriteRow(
             SingleLineText(
                 text = favorite.subtitle.orEmpty(),
                 style = MaterialTheme.typography.body2,
-                modifier = Modifier.alpha(medium)
+                modifier = Modifier.alpha(ContentAlpha.medium)
             )
         }
         IconButton(onClick = onRemoveClick) {
             Icon(
                 imageVector = Icons.Filled.Close,
                 contentDescription = stringResource(R.string.remove_favorite),
-                modifier = Modifier.alpha(medium)
+                modifier = Modifier.alpha(ContentAlpha.medium)
             )
         }
     }
@@ -183,7 +207,7 @@ private fun AutocompletePredictionRow(
             SingleLineText(
                 text = prediction.getSecondaryText(null).toString(),
                 style = MaterialTheme.typography.body2,
-                modifier = Modifier.alpha(medium)
+                modifier = Modifier.alpha(ContentAlpha.medium)
             )
         }
     }

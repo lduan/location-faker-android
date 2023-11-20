@@ -1,4 +1,4 @@
-package com.duanstar.locationfaker.feature.main.dialogs
+package com.duanstar.locationfaker.feature.main
 
 import android.content.Intent
 import android.net.Uri

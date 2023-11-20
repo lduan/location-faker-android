@@ -24,8 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.ContentAlpha
-import androidx.compose.material.ContentAlpha.disabled
-import androidx.compose.material.ContentAlpha.high
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -56,54 +54,52 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duanstar.locationfaker.R
 import com.duanstar.locationfaker.fake_location.FakeLocation
-import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine.State
-import com.duanstar.locationfaker.feature.main.dialogs.EnableMockLocationSettingDialog
-import com.duanstar.locationfaker.feature.main.dialogs.LocationPermissionRequiredDialog
-import com.duanstar.locationfaker.location.toLatLng
+import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine
+import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine.State.ON
 import com.duanstar.locationfaker.permission.anyGranted
 import com.duanstar.locationfaker.permission.requireLocationPermission
-import com.duanstar.locationfaker.ui.FadeAnimatedVisibility
 import com.duanstar.locationfaker.ui.theme.Dimensions.marginHorizontal
 import com.duanstar.locationfaker.ui.theme.Dimensions.marginVertical
 import com.duanstar.locationfaker.ui.theme.Dimensions.padding
 import com.duanstar.locationfaker.ui.widgets.CenteredRow
+import com.duanstar.locationfaker.ui.widgets.FadeAnimatedVisibility
 import com.duanstar.locationfaker.ui.widgets.SingleLineText
+import com.duanstar.locationfaker.utils.animateTo
+import com.duanstar.locationfaker.utils.bounds
+import com.duanstar.locationfaker.utils.latLng
+import com.duanstar.locationfaker.utils.moveTo
+import com.duanstar.locationfaker.utils.onCameraIdle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
-private val SAN_FRANCISCO_LAT_LNG = LatLng(37.7749, -122.4194)
 
 @Composable
 fun MainLayout(
     viewModel: MainViewModel = hiltViewModel(),
-    onSearchClick: (LatLng) -> Unit
+    onSearchClick: (LatLngBounds?) -> Unit
 ) {
     val fakeLocation by viewModel.fakeLocation.collectAsStateWithLifecycle()
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
-    val isGeocoding by viewModel.isGeocoding.collectAsStateWithLifecycle()
     val mockLocationsEnabled by viewModel.mockLocationsEnabled.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     MainLayout(
+        cameraPositionState = viewModel.cameraPositionState,
         fakeLocation = fakeLocation,
         favorites = favorites,
-        isGeocoding = isGeocoding,
         state = state,
         mockLocationsEnabled = mockLocationsEnabled,
         setFakeLocation = viewModel::setFakeLocation,
@@ -117,16 +113,16 @@ fun MainLayout(
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MainLayout(
+    cameraPositionState: CameraPositionState,
     fakeLocation: FakeLocation?,
     favorites: List<FakeLocation>,
-    isGeocoding: Boolean,
-    state: State,
+    state: FakeLocationStateMachine.State,
     mockLocationsEnabled: Boolean,
     setFakeLocation: (FakeLocation?) -> Unit,
     setState: (Boolean) -> Unit,
     toggleSaved: () -> Unit,
     getLastLocation: suspend () -> Location?,
-    onSearchClick: (LatLng) -> Unit
+    onSearchClick: (LatLngBounds?) -> Unit
 ) {
     val permissionState = requireLocationPermission()
     val permissionGranted = permissionState.anyGranted
@@ -136,7 +132,7 @@ fun MainLayout(
 
     Scaffold(
         topBar = {
-            AppBar(
+            TopBar(
                 showSwitch = fakeLocation != null,
                 state = state,
                 onSwitchChecked = { checked ->
@@ -152,10 +148,6 @@ fun MainLayout(
         }
     ) { p ->
         Box(modifier = Modifier.padding(p)) {
-            val cameraPositionState = rememberCameraPositionState {
-                position = CameraPosition.fromLatLngZoom(fakeLocation?.latLng ?: SAN_FRANCISCO_LAT_LNG, 15f)
-            }
-
             Map(
                 cameraPositionState = cameraPositionState,
                 permissionGranted = permissionGranted,
@@ -171,16 +163,22 @@ fun MainLayout(
             }
             SearchBar(
                 fakeLocation = fakeLocation,
-                geocoding = isGeocoding,
-                isStarred = isFakeLocationSaved,
+                starred = isFakeLocationSaved,
                 onClick = {
-                    onSearchClick(cameraPositionState.position.target)
+                    onSearchClick(cameraPositionState.bounds)
                 },
                 onCloseClick = {
                     setFakeLocation(null)
                 },
                 onStarClick = toggleSaved
             )
+        }
+
+        LaunchedEffect(permissionGranted) {
+            // If marker is not already set, move map to user's last location.
+            if (permissionGranted && fakeLocation == null) {
+                getLastLocation()?.latLng?.let { cameraPositionState.moveTo(it) }
+            }
         }
     }
 
@@ -199,9 +197,9 @@ fun MainLayout(
 }
 
 @Composable
-private fun AppBar(
+private fun TopBar(
     showSwitch: Boolean,
-    state: State,
+    state: FakeLocationStateMachine.State,
     onSwitchChecked: (Boolean) -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition()
@@ -214,12 +212,12 @@ private fun AppBar(
         )
     )
     val backgroundColor = when (state) {
-        State.OFF -> MaterialTheme.colors.surface
-        State.ON -> pulseColor
+        FakeLocationStateMachine.State.OFF -> MaterialTheme.colors.surface
+        FakeLocationStateMachine.State.ON -> pulseColor
     }
     val contentColor = when (state) {
-        State.OFF -> MaterialTheme.colors.primary
-        State.ON -> MaterialTheme.colors.onPrimary
+        FakeLocationStateMachine.State.OFF -> MaterialTheme.colors.primary
+        FakeLocationStateMachine.State.ON -> MaterialTheme.colors.onPrimary
     }
     TopAppBar(
         title = {
@@ -227,22 +225,20 @@ private fun AppBar(
         },
         actions = {
             FadeAnimatedVisibility(visible = showSwitch) {
-                CenteredRow {
-                    Text(
-                        text = state.name,
-                        style = MaterialTheme.typography.button,
-                        modifier = Modifier
-                            .clickable(
-                                onClick = {
-                                    onSwitchChecked(state != State.ON)
-                                },
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            )
-                            .padding(vertical = 8.dp)
-                    )
+                CenteredRow(
+                    modifier = Modifier
+                        .clickable(
+                            onClick = {
+                                onSwitchChecked(state != ON)
+                            },
+                            role = Role.Switch,
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        )
+                ) {
+                    Text(text = state.name, style = MaterialTheme.typography.button)
                     Switch(
-                        checked = state == State.ON,
+                        checked = state == ON,
                         onCheckedChange = onSwitchChecked
                     )
                 }
@@ -257,8 +253,7 @@ private fun AppBar(
 @Composable
 private fun SearchBar(
     fakeLocation: FakeLocation?,
-    geocoding: Boolean,
-    isStarred: Boolean,
+    starred: Boolean,
     onClick: () -> Unit,
     onCloseClick: () -> Unit,
     onStarClick: () -> Unit
@@ -280,15 +275,23 @@ private fun SearchBar(
                     .minimumInteractiveComponentSize()
                     .alpha(ContentAlpha.medium)
             )
-            SingleLineText(
-                text = fakeLocation?.title ?: stringResource(R.string.search),
-                modifier = Modifier
-                    .weight(1f)
-                    .alpha(fakeLocation?.let { high } ?: disabled),
-                style = MaterialTheme.typography.body2
-            )
-            if (geocoding) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+            if (fakeLocation != null) {
+                SingleLineText(
+                    text = fakeLocation.title,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.body2
+                )
+                if (fakeLocation.name?.isEmpty() == true) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                }
+            } else {
+                SingleLineText(
+                    text = stringResource(R.string.search),
+                    modifier = Modifier
+                        .weight(1f)
+                        .alpha(ContentAlpha.medium),
+                    style = MaterialTheme.typography.body2
+                )
             }
             FadeAnimatedVisibility(visible = fakeLocation != null) {
                 CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
@@ -311,7 +314,7 @@ private fun SearchBar(
                                 .fillMaxHeight()
                                 .padding(horizontal = 8.dp)
                         ) {
-                            if (isStarred) {
+                            if (starred) {
                                 Icon(
                                     imageVector = Icons.Filled.Star,
                                     contentDescription = stringResource(R.string.added_to_favorites),
@@ -387,7 +390,7 @@ private fun Map(
                     FadeAnimatedVisibility(visible = permissionGranted) {
                         MyLocationButton(onClick = {
                             coroutineScope.launch {
-                                getLastLocation()?.toLatLng()?.let { cameraPositionState.animateTo(it) }
+                                getLastLocation()?.latLng?.let { cameraPositionState.moveTo(it) }
                             }
                         })
                     }
@@ -400,15 +403,6 @@ private fun Map(
 
             cameraPositionState.onCameraIdle {
                 cameraIdleBounds = cameraPositionState.bounds
-            }
-            LaunchedEffect(permissionGranted) {
-                // If no pin is already set, set the initial map position to current user location.
-                if (permissionGranted && fakeLocation == null) {
-                    getLastLocation()?.toLatLng()?.let {
-                        Timber.e("Last location found, moving to $it")
-                        cameraPositionState.moveTo(it)
-                    }
-                }
             }
         }
     }
@@ -446,27 +440,4 @@ private fun FindMarkerButton(onClick: () -> Unit) {
                 .padding(8.dp)
         )
     }
-}
-
-private val CameraPositionState.bounds
-    get() = projection?.visibleRegion?.latLngBounds
-
-@Composable
-private fun CameraPositionState.onCameraIdle(onIdle: () -> Unit) {
-    LaunchedEffect(isMoving) {
-        if (!isMoving) {
-            onIdle()
-            Timber.e("Camera moved to ${position.target}")
-        }
-    }
-}
-
-private suspend fun CameraPositionState.animateTo(newLatLng: LatLng, minZoom: Float = 13f, maxZoom: Float = 17f) {
-    val zoom = position.zoom.coerceIn(minZoom, maxZoom)
-    animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(newLatLng, zoom)))
-}
-
-private fun CameraPositionState.moveTo(newLatLng: LatLng, minZoom: Float = 13f, maxZoom: Float = 17f) {
-    val zoom = position.zoom.coerceIn(minZoom, maxZoom)
-    move(CameraUpdateFactory.newLatLngZoom(newLatLng, zoom))
 }
