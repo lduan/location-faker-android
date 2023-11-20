@@ -112,15 +112,16 @@ class FakeLocationService : LifecycleService() {
             val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, notificationTitle, NotificationManager.IMPORTANCE_LOW)
             notificationManager.createNotificationChannel(channel)
         }
-
         val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_place_24)
             .setColor(ContextCompat.getColor(this, R.color.color_primary))
             .setContentTitle(notificationTitle)
             .setContentText(fakeLocation.title)
             .setContentIntent(pendingIntent)
+            .setOngoing(true)
             .addAction(stopAction)
             .build()
+
         startForeground(NOTIFICATION_ID, notification)
     }
 }

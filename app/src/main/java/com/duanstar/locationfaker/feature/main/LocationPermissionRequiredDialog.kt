@@ -9,29 +9,31 @@ import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import com.duanstar.locationfaker.R
+import com.duanstar.locationfaker.permission.rememberLocationPermission
+import com.duanstar.locationfaker.ui.theme.AppTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.MultiplePermissionsState
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun LocationPermissionRequiredDialog(
-    permissionState: MultiplePermissionsState,
     onDismiss: () -> Unit
 ) {
+    val locationPermissionState = rememberLocationPermission()
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             val context = LocalContext.current
             TextButton(onClick = {
-                if (permissionState.shouldShowRationale) {
-                    permissionState.launchMultiplePermissionRequest()
+                if (locationPermissionState.shouldShowRationale) {
+                    locationPermissionState.launchMultiplePermissionRequest()
                 } else {
                     val uriPackage = Uri.fromParts("package", context.packageName, null)
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, uriPackage)
                     context.startActivity(intent)
-                    onDismiss()
                 }
+                onDismiss()
             }) {
                 Text(text = stringResource(R.string.grant).uppercase())
             }
@@ -40,4 +42,14 @@ fun LocationPermissionRequiredDialog(
             Text(text = stringResource(R.string.enable_locations_message))
         }
     )
+}
+
+@Preview
+@Composable
+fun LocationPermissionRequiredDialogPreview() {
+    AppTheme {
+        LocationPermissionRequiredDialog(
+            onDismiss = {}
+        )
+    }
 }

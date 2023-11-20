@@ -31,10 +31,7 @@ fun EnableMockLocationSettingDialog(onDismiss: () -> Unit) {
                     onDismiss()
                 }
             ) {
-                Text(
-                    text = stringResource(if (devOpEnabled) R.string.developer_options else R.string.settings)
-                        .uppercase()
-                )
+                Text(text = stringResource(if (devOpEnabled) R.string.developer_options else R.string.settings).uppercase())
             }
         },
         text = {

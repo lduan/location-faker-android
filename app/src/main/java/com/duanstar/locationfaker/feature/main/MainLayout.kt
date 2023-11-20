@@ -1,5 +1,6 @@
 package com.duanstar.locationfaker.feature.main
 
+import android.annotation.SuppressLint
 import android.location.Location
 import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.LinearEasing
@@ -63,7 +64,8 @@ import com.duanstar.locationfaker.fake_location.FakeLocation
 import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine
 import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine.State.ON
 import com.duanstar.locationfaker.permission.anyGranted
-import com.duanstar.locationfaker.permission.requireLocationPermission
+import com.duanstar.locationfaker.permission.rememberLocationPermission
+import com.duanstar.locationfaker.permission.rememberNotificationsPermission
 import com.duanstar.locationfaker.ui.theme.Dimensions.marginHorizontal
 import com.duanstar.locationfaker.ui.theme.Dimensions.marginVertical
 import com.duanstar.locationfaker.ui.theme.Dimensions.padding
@@ -76,6 +78,8 @@ import com.duanstar.locationfaker.utils.latLng
 import com.duanstar.locationfaker.utils.moveTo
 import com.duanstar.locationfaker.utils.onCameraIdle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.shouldShowRationale
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
@@ -110,6 +114,7 @@ fun MainLayout(
     )
 }
 
+@SuppressLint("InlinedApi")
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MainLayout(
@@ -124,11 +129,18 @@ fun MainLayout(
     getLastLocation: suspend () -> Location?,
     onSearchClick: (LatLngBounds?) -> Unit
 ) {
-    val permissionState = requireLocationPermission()
-    val permissionGranted = permissionState.anyGranted
+    val locationPermissionState = rememberLocationPermission()
+    LaunchedEffect(Unit) {
+        locationPermissionState.launchMultiplePermissionRequest()
+    }
+    val locationGranted = locationPermissionState.anyGranted
 
-    var showPermissionDialog by remember { mutableStateOf(false) }
+    var notificationPermissionRequested by remember { mutableStateOf(false) }
+    val notificationsPermissionState = rememberNotificationsPermission()
+
+    var showLocationPermissionDialog by remember { mutableStateOf(false) }
     var showMockLocationSettingDialog by remember { mutableStateOf(false) }
+
 
     Scaffold(
         topBar = {
@@ -136,10 +148,15 @@ fun MainLayout(
                 showSwitch = fakeLocation != null,
                 state = state,
                 onSwitchChecked = { checked ->
-                    if (!permissionGranted) {
-                        showPermissionDialog = true
+                    if (!locationGranted) {
+                        showLocationPermissionDialog = true
                     } else if (!mockLocationsEnabled) {
                         showMockLocationSettingDialog = true
+                    } else if (!notificationsPermissionState.status.isGranted &&
+                        (!notificationPermissionRequested || notificationsPermissionState.status.shouldShowRationale)
+                    ) {
+                        notificationsPermissionState.launchPermissionRequest()
+                        notificationPermissionRequested = true
                     } else {
                         setState(checked)
                     }
@@ -150,7 +167,7 @@ fun MainLayout(
         Box(modifier = Modifier.padding(p)) {
             Map(
                 cameraPositionState = cameraPositionState,
-                permissionGranted = permissionGranted,
+                locationGranted = locationGranted,
                 fakeLocation = fakeLocation,
                 setFakeLocation = setFakeLocation,
                 getLastLocation = getLastLocation
@@ -174,18 +191,17 @@ fun MainLayout(
             )
         }
 
-        LaunchedEffect(permissionGranted) {
+        LaunchedEffect(locationGranted) {
             // If marker is not already set, move map to user's last location.
-            if (permissionGranted && fakeLocation == null) {
+            if (locationGranted && fakeLocation == null) {
                 getLastLocation()?.latLng?.let { cameraPositionState.moveTo(it) }
             }
         }
     }
 
-    if (showPermissionDialog) {
+    if (showLocationPermissionDialog) {
         LocationPermissionRequiredDialog(
-            permissionState = permissionState,
-            onDismiss = { showPermissionDialog = false }
+            onDismiss = { showLocationPermissionDialog = false }
         )
     }
 
@@ -339,13 +355,13 @@ private fun SearchBar(
 @Composable
 private fun Map(
     cameraPositionState: CameraPositionState,
-    permissionGranted: Boolean,
+    locationGranted: Boolean,
     fakeLocation: FakeLocation?,
     setFakeLocation: (FakeLocation?) -> Unit,
     getLastLocation: suspend () -> Location?
 ) {
-    val properties = remember(permissionGranted) {
-        MapProperties(isMyLocationEnabled = permissionGranted)
+    val properties = remember(locationGranted) {
+        MapProperties(isMyLocationEnabled = locationGranted)
     }
     val uiSettings = remember {
         MapUiSettings(
@@ -387,10 +403,10 @@ private fun Map(
                         })
                     }
                     Spacer(Modifier.weight(1f))
-                    FadeAnimatedVisibility(visible = permissionGranted) {
+                    FadeAnimatedVisibility(visible = locationGranted) {
                         MyLocationButton(onClick = {
                             coroutineScope.launch {
-                                getLastLocation()?.latLng?.let { cameraPositionState.moveTo(it) }
+                                getLastLocation()?.latLng?.let { cameraPositionState.animateTo(it) }
                             }
                         })
                     }
