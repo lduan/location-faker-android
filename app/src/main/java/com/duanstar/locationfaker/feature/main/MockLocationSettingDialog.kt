@@ -1,6 +1,5 @@
 package com.duanstar.locationfaker.feature.main
 
-import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.provider.Settings

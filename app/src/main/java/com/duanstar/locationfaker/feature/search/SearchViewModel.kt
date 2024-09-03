@@ -122,9 +122,9 @@ class SearchViewModel @Inject constructor(
     }
 }
 
-sealed interface ApiStatus {
+sealed class ApiStatus {
 
-    object OK : ApiStatus
+    data object OK : ApiStatus()
 
-    data class Error(val message: String?) : ApiStatus
+    data class Error(val message: String?) : ApiStatus()
 }

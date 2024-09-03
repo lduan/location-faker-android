@@ -2,23 +2,21 @@ package com.duanstar.locationfaker.fake_location
 
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import com.squareup.moshi.JsonDataException
-import com.squareup.moshi.Moshi
-import com.squareup.moshi.adapter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import timber.log.Timber
-import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Stream that allows for observing and updating the current fake location.
  */
-@OptIn(ExperimentalStdlibApi::class)
 @Singleton
 class FakeLocationStream @Inject constructor(
     private val coroutineScope: CoroutineScope,
@@ -27,10 +25,6 @@ class FakeLocationStream @Inject constructor(
     companion object {
         private const val PREF_KEY = "fake_location"
     }
-
-    private val adapter = Moshi.Builder()
-        .build()
-        .adapter<FakeLocation>()
 
     private val _fakeLocation: MutableStateFlow<FakeLocation?> = MutableStateFlow(read())
     val fakeLocation = _fakeLocation.asStateFlow()
@@ -49,11 +43,8 @@ class FakeLocationStream @Inject constructor(
     private fun read(): FakeLocation? {
         return prefs.getString(PREF_KEY, null)?.let { json ->
             try {
-                adapter.fromJson(json)
-            } catch (e: IOException) {
-                Timber.e(e, "Failed to read fake location. json=$json")
-                null
-            } catch (e: JsonDataException) {
+                Json.decodeFromString<FakeLocation>(json)
+            } catch (e: SerializationException) {
                 Timber.e(e, "Failed to read fake location. json=$json")
                 null
             }
@@ -62,7 +53,9 @@ class FakeLocationStream @Inject constructor(
 
     private fun write(value: FakeLocation?) {
         prefs.edit {
-            putString(PREF_KEY, value?.let(adapter::toJson))
+            putString(PREF_KEY, value?.let {
+                Json.encodeToString<FakeLocation>(it)
+            })
         }
     }
 }

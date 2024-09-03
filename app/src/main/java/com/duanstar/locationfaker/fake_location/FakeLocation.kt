@@ -1,10 +1,11 @@
 package com.duanstar.locationfaker.fake_location
 
 import com.google.android.gms.maps.model.LatLng
-import com.squareup.moshi.JsonClass
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import java.text.DecimalFormat
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class FakeLocation(
     val latitude: Double,
     val longitude: Double,

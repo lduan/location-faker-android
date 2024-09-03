@@ -81,7 +81,6 @@ import com.duanstar.locationfaker.utils.animateTo
 import com.duanstar.locationfaker.utils.bounds
 import com.duanstar.locationfaker.utils.latLng
 import com.duanstar.locationfaker.utils.moveTo
-import com.duanstar.locationfaker.utils.onCameraIdle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.isGranted
@@ -106,9 +105,9 @@ fun MainLayout(
     onSearchClick: (LatLngBounds?) -> Unit
 ) {
     val fakeLocation by viewModel.fakeLocation.collectAsStateWithLifecycle()
-    val isFakeLocationSaved by viewModel.isFakeLocationSaved().collectAsStateWithLifecycle(false)
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val isFakeLocationSaved by viewModel.isFakeLocationSaved.collectAsStateWithLifecycle(false)
     val nextStep by viewModel.nextStep.collectAsStateWithLifecycle(NextStep.Ready)
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     MainLayout(
         fakeLocation = fakeLocation,
@@ -118,7 +117,8 @@ fun MainLayout(
         setLocationPermissionStatus = viewModel.locationPermissionStatus::value::set,
         setNotificationPermissionStatus = viewModel.notificationPermissionStatus::value::set,
         setFakeLocation = viewModel::setFakeLocation,
-        setState = viewModel::setState,
+        turnOn = viewModel::turnOn,
+        turnOff = viewModel::turnOff,
         toggleSave = viewModel::toggleSave,
         getLastLocation = viewModel::getLastLocation,
         onSearchClick = onSearchClick
@@ -135,7 +135,8 @@ fun MainLayout(
     setLocationPermissionStatus: (PermissionStatus) -> Unit,
     setNotificationPermissionStatus: (PermissionStatus) -> Unit,
     setFakeLocation: (FakeLocation?) -> Unit,
-    setState: (Boolean) -> Unit,
+    turnOn: () -> Unit,
+    turnOff: () -> Unit,
     toggleSave: () -> Unit,
     getLastLocation: suspend () -> Location?,
     onSearchClick: (LatLngBounds?) -> Unit
@@ -178,7 +179,7 @@ fun MainLayout(
 
     var showLocationPermissionNeededDialog by remember { mutableStateOf(false) }
     var showNotificationPermissionNeededDialog by remember { mutableStateOf(false) }
-    var showMockLocationSettingDialog by remember { mutableStateOf(false) }
+    var showMockLocationSettingNeededDialog by remember { mutableStateOf(false) }
 
     // Store try-start as a counter, so we can increment it and continue the flow from the next required step
     var tryStart by remember { mutableIntStateOf(0) }
@@ -200,10 +201,10 @@ fun MainLayout(
                     }
                 }
                 is NextStep.MockLocationSettingNeeded -> {
-                    showMockLocationSettingDialog = true
+                    showMockLocationSettingNeededDialog = true
                 }
                 is NextStep.Ready -> {
-                    setState(true)
+                    turnOn()
                     tryStart = 0
                 }
             }
@@ -220,7 +221,7 @@ fun MainLayout(
                         tryStart++
                     } else {
                         tryStart = 0
-                        setState(false)
+                        turnOff()
                     }
                 }
             )
@@ -267,10 +268,10 @@ fun MainLayout(
         )
     }
 
-    if (showMockLocationSettingDialog) {
+    if (showMockLocationSettingNeededDialog) {
         MockLocationSettingDialog(
             onDismiss = {
-                showMockLocationSettingDialog = false
+                showMockLocationSettingNeededDialog = false
             }
         )
     }
@@ -387,8 +388,10 @@ private fun SearchBar(
             }
 
             var cameraIdleBounds by remember { mutableStateOf(cameraPositionState.bounds) }
-            cameraPositionState.onCameraIdle {
-                cameraIdleBounds = cameraPositionState.bounds
+            LaunchedEffect(cameraPositionState.isMoving) {
+                if (!cameraPositionState.isMoving) {
+                    cameraIdleBounds = cameraPositionState.bounds
+                }
             }
             val isMarkerOffscreen by remember(cameraIdleBounds, fakeLocation) {
                 derivedStateOf {
@@ -509,7 +512,6 @@ private fun MainLayoutPreview() {
         latitude = 57.388222,
         longitude = 3.711944
     )
-    val myLatLng = LatLng(57.388322, 3.712944)
     AppTheme {
         MainLayout(
             fakeLocation = fakeLocation,
@@ -519,7 +521,8 @@ private fun MainLayoutPreview() {
             setLocationPermissionStatus = { },
             setNotificationPermissionStatus = { },
             setFakeLocation = { },
-            setState = { },
+            turnOn = { },
+            turnOff = { },
             toggleSave = { },
             getLastLocation = { null },
             onSearchClick = { }
