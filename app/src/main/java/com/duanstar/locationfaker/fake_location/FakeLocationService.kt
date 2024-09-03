@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.location.Location
+import android.location.LocationManager.GPS_PROVIDER
 import android.os.Build
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
@@ -40,7 +41,7 @@ class FakeLocationService : LifecycleService() {
     }
 
     @Inject lateinit var fakeLocationStream: FakeLocationStream
-    @Inject lateinit var locationClient: FusedLocationProviderClient
+    @Inject lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     @Inject lateinit var notificationManager: NotificationManager
 
     private var timer: Timer? = null
@@ -48,27 +49,33 @@ class FakeLocationService : LifecycleService() {
     override fun onCreate() {
         super.onCreate()
 
+        try {
+            fusedLocationProviderClient.setMockMode(true)
+        } catch (e: SecurityException) {
+            Timber.e(e, "Permission not granted.")
+        }
+
         launch {
             fakeLocationStream.fakeLocation.filterNotNull().collect { fakeLocation ->
                 // Android OS will kill this service unless we schedule periodic updates.
                 timer?.cancel()
-                timer = timer(initialDelay = 0, period = 5 * 60 * 1000) {
+                timer = timer(initialDelay = 0, period = 5 * 1000) {
+                    val location = Location(GPS_PROVIDER).apply {
+                        altitude = 1.0
+                        accuracy = 4f
+                        bearing = 0f
+                        latitude = fakeLocation.latitude
+                        longitude = fakeLocation.longitude
+                        speed = .1f
+                        time = System.currentTimeMillis()
+                        elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+                    }
+
                     try {
-                        val location = Location("fakeLocationProvider").apply {
-                            altitude = 0.0
-                            accuracy = 1f
-                            bearing = 0f
-                            latitude = fakeLocation.latitude
-                            longitude = fakeLocation.longitude
-                            speed = 0f
-                            time = System.currentTimeMillis()
-                            elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
-                        }
-                        locationClient.setMockMode(true)
-                        locationClient.setMockLocation(location)
+                        fusedLocationProviderClient.setMockLocation(location)
                         startForegroundNotification(fakeLocation)
                     } catch (e: SecurityException) {
-                        Timber.e(e, "Mock location permission is not granted.")
+                        Timber.e(e, "Permission not granted.")
                     }
                 }
             }
@@ -81,12 +88,13 @@ class FakeLocationService : LifecycleService() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        timer?.cancel()
         try {
-            locationClient.setMockMode(false)
+            fusedLocationProviderClient.setMockMode(false)
         } catch (e: SecurityException) {
-            Timber.e(e, "Mock location permission is not granted.")
+            Timber.e(e, "Permission not granted.")
         }
+        super.onDestroy()
     }
 
     private fun startForegroundNotification(fakeLocation: FakeLocation) {

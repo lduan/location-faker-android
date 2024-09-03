@@ -1,6 +1,6 @@
 package com.duanstar.locationfaker.fake_location
 
-import com.duanstar.locationfaker.settings.MockLocationSetting
+import com.duanstar.locationfaker.settings.MockLocationSettingMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,7 +12,7 @@ import javax.inject.Singleton
 class FakeLocationStateMachine @Inject constructor(
     private val coroutineScope: CoroutineScope,
     private val fakeLocationStream: FakeLocationStream,
-    private val mockLocationSetting: MockLocationSetting
+    private val mockLocationSettingMonitor: MockLocationSettingMonitor
 ) {
 
     private val _state = MutableStateFlow(State.OFF)
@@ -23,12 +23,12 @@ class FakeLocationStateMachine @Inject constructor(
         coroutineScope.launch {
             // Turn off state if fake location becomes null
             fakeLocationStream.fakeLocation.collect { fakeLocation ->
-                fakeLocation ?: off()
+                if (fakeLocation == null) off()
             }
         }
         coroutineScope.launch {
             // Turn off state if mock locations are disabled in developer options
-            mockLocationSetting.enabled.collect { enabled ->
+            mockLocationSettingMonitor.enabled.collect { enabled ->
                 if (!enabled) off()
             }
         }

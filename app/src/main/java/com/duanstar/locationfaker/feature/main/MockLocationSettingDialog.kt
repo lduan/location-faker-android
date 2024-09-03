@@ -1,6 +1,5 @@
 package com.duanstar.locationfaker.feature.main
 
-import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.provider.Settings
@@ -15,26 +14,27 @@ import com.duanstar.locationfaker.R
 import com.duanstar.locationfaker.ui.theme.AppTheme
 
 @Composable
-fun EnableMockLocationSettingDialog(onDismiss: () -> Unit) {
+fun MockLocationSettingDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             val context = LocalContext.current
-            val devOpEnabled = context.isDeveloperOptionsEnabled
+            val isDeveloperOptionsEnabled =
+                Settings.Secure.getInt(context.contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) != 0
             TextButton(
                 onClick = {
-                    val intent = if (devOpEnabled) {
-                        // Open developer options
-                        Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-                    } else {
-                        // Open settings
-                        Intent(Settings.ACTION_SETTINGS)
-                    }
+                    val intent = Intent(
+                        if (isDeveloperOptionsEnabled) {
+                            Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS
+                        } else {
+                            Settings.ACTION_SETTINGS
+                        }
+                    )
                     context.startActivity(intent)
                     onDismiss()
                 }
             ) {
-                Text(text = stringResource(if (devOpEnabled) R.string.developer_options else R.string.settings).uppercase())
+                Text(text = stringResource(if (isDeveloperOptionsEnabled) R.string.developer_options else R.string.settings).uppercase())
             }
         },
         text = {
@@ -48,9 +48,6 @@ fun EnableMockLocationSettingDialog(onDismiss: () -> Unit) {
 @Composable
 private fun EnableMockLocationSettingDialogPreview() {
     AppTheme {
-        EnableMockLocationSettingDialog(onDismiss = {})
+        MockLocationSettingDialog(onDismiss = {})
     }
 }
-
-private val Context.isDeveloperOptionsEnabled: Boolean
-    get() = Settings.Secure.getInt(contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) != 0

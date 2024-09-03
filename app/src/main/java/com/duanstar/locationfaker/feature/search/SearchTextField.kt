@@ -1,5 +1,6 @@
 package com.duanstar.locationfaker.feature.search
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
@@ -8,10 +9,10 @@ import androidx.compose.material.ContentAlpha
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.Surface
 import androidx.compose.material.Text
-import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults
-import androidx.compose.material.TextFieldDefaults.IconOpacity
 import androidx.compose.material.contentColorFor
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -59,7 +60,7 @@ fun SearchTextField(
     }
 
     CenteredRow {
-        TextField(
+        OutlinedTextField(
             value = textState,
             onValueChange = {
                 textState = it
@@ -92,27 +93,27 @@ fun SearchTextField(
                     focusManager.clearFocus()
                 }
             ),
-            colors = TextFieldDefaults.textFieldColors(
-                backgroundColor = backgroundColor,
-                cursorColor = contentColor.copy(alpha = ContentAlpha.medium),
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                leadingIconColor = contentColor.copy(alpha = IconOpacity),
-                trailingIconColor = contentColor.copy(alpha = IconOpacity),
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                cursorColor = contentColor,
                 placeholderColor = contentColor.copy(alpha = ContentAlpha.medium)
             )
         )
     }
 }
 
-@Preview
+@Preview(name = "Light", uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-fun ExpandedSearchBarPreview() {
+fun SearchTextFieldPreview() {
     AppTheme {
-        SearchTextField(
-            query = "",
-            onQueryChanged = { },
-            hint = "Search"
-        )
+        Surface {
+            SearchTextField(
+                query = "",
+                onQueryChanged = { },
+                hint = "Search"
+            )
+        }
     }
 }

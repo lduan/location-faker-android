@@ -6,10 +6,9 @@ import android.os.Build
 import android.os.Process
 import android.provider.Settings
 import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import com.duanstar.locationfaker.BuildConfig
-import com.duanstar.locationfaker.di.ProcessLifecycle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,17 +16,15 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class MockLocationSetting @Inject constructor(
-    @ApplicationContext private val context: Context,
-    @ProcessLifecycle private val processLifecycle: Lifecycle
+class MockLocationSettingMonitor @Inject constructor(
+    @ApplicationContext private val context: Context
 ) {
 
     private val _enabled = MutableStateFlow(isMockLocationEnabled())
-    
     val enabled = _enabled.asStateFlow()
 
     init {
-        processLifecycle.addObserver(object : DefaultLifecycleObserver {
+        ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             // Check if mock locations are enabled whenever we foreground the app.
             override fun onStart(owner: LifecycleOwner) {
                 _enabled.value = isMockLocationEnabled()

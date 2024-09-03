@@ -12,35 +12,30 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.duanstar.locationfaker.R
-import com.duanstar.locationfaker.permission.rememberLocationPermission
 import com.duanstar.locationfaker.ui.theme.AppTheme
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
 
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun LocationPermissionRequiredDialog(
+fun PermissionNeededDialog(
+    permissionName: String,
     onDismiss: () -> Unit
 ) {
-    val locationPermissionState = rememberLocationPermission()
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             val context = LocalContext.current
-            TextButton(onClick = {
-                if (locationPermissionState.shouldShowRationale) {
-                    locationPermissionState.launchMultiplePermissionRequest()
-                } else {
+            TextButton(
+                onClick = {
                     val uriPackage = Uri.fromParts("package", context.packageName, null)
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, uriPackage)
                     context.startActivity(intent)
+                    onDismiss()
                 }
-                onDismiss()
-            }) {
-                Text(text = stringResource(R.string.grant).uppercase())
+            ) {
+                Text(text = stringResource(R.string.settings).uppercase())
             }
         },
         text = {
-            Text(text = stringResource(R.string.enable_locations_message))
+            Text(text = stringResource(R.string.permission_needed_message, permissionName))
         }
     )
 }
@@ -50,7 +45,8 @@ fun LocationPermissionRequiredDialog(
 @Composable
 private fun LocationPermissionRequiredDialogPreview() {
     AppTheme {
-        LocationPermissionRequiredDialog(
+        PermissionNeededDialog(
+            permissionName = "Location",
             onDismiss = {}
         )
     }
