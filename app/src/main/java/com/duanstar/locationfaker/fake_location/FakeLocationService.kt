@@ -73,10 +73,10 @@ class FakeLocationService : LifecycleService() {
 
                     try {
                         fusedLocationProviderClient.setMockLocation(location)
-                        startForegroundNotification(fakeLocation)
                     } catch (e: SecurityException) {
                         Timber.e(e, "Permission not granted.")
                     }
+                    startForegroundNotification(fakeLocation)
                 }
             }
         }
