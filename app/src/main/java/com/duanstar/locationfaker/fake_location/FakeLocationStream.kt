@@ -31,8 +31,8 @@ class FakeLocationStream @Inject constructor(
     private val adapter = Moshi.Builder()
         .build()
         .adapter<FakeLocation>()
-    private val _fakeLocation: MutableStateFlow<FakeLocation?> = MutableStateFlow(read())
 
+    private val _fakeLocation: MutableStateFlow<FakeLocation?> = MutableStateFlow(read())
     val fakeLocation = _fakeLocation.asStateFlow()
 
     init {

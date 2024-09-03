@@ -1,6 +1,7 @@
+@file:OptIn(ExperimentalPermissionsApi::class)
+
 package com.duanstar.locationfaker.feature.main
 
-import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.location.Location
 import androidx.compose.animation.animateColor
@@ -46,9 +47,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -64,7 +67,7 @@ import com.duanstar.locationfaker.fake_location.FakeLocation
 import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine
 import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine.State.OFF
 import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine.State.ON
-import com.duanstar.locationfaker.permission.anyGranted
+import com.duanstar.locationfaker.feature.main.MainViewModel.NextStep
 import com.duanstar.locationfaker.permission.rememberLocationPermission
 import com.duanstar.locationfaker.permission.rememberNotificationsPermission
 import com.duanstar.locationfaker.ui.theme.AppTheme
@@ -80,20 +83,22 @@ import com.duanstar.locationfaker.utils.latLng
 import com.duanstar.locationfaker.utils.moveTo
 import com.duanstar.locationfaker.utils.onCameraIdle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.shouldShowRationale
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
-import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.maps.android.compose.CameraPositionState
+import com.google.maps.android.compose.ComposeMapColorScheme
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 
+private val SAN_FRANCISCO_LAT_LNG = LatLng(37.7749, -122.4194)
 
 @Composable
 fun MainLayout(
@@ -101,57 +106,109 @@ fun MainLayout(
     onSearchClick: (LatLngBounds?) -> Unit
 ) {
     val fakeLocation by viewModel.fakeLocation.collectAsStateWithLifecycle()
-    val favorites by viewModel.favorites.collectAsStateWithLifecycle()
-    val mockLocationsEnabled by viewModel.mockLocationsEnabled.collectAsStateWithLifecycle()
+    val isFakeLocationSaved by viewModel.isFakeLocationSaved().collectAsStateWithLifecycle(false)
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val nextStep by viewModel.nextStep.collectAsStateWithLifecycle(NextStep.Ready)
 
     MainLayout(
-        cameraPositionState = viewModel.cameraPositionState,
         fakeLocation = fakeLocation,
-        favorites = favorites,
+        isFakeLocationSaved = isFakeLocationSaved,
         state = state,
-        mockLocationsEnabled = mockLocationsEnabled,
+        nextStep = nextStep,
+        setLocationPermissionStatus = viewModel.locationPermissionStatus::value::set,
+        setNotificationPermissionStatus = viewModel.notificationPermissionStatus::value::set,
         setFakeLocation = viewModel::setFakeLocation,
         setState = viewModel::setState,
-        toggleSaved = viewModel::toggleSaved,
+        toggleSave = viewModel::toggleSave,
         getLastLocation = viewModel::getLastLocation,
         onSearchClick = onSearchClick
     )
 }
 
-@SuppressLint("InlinedApi")
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MainLayout(
-    cameraPositionState: CameraPositionState,
     fakeLocation: FakeLocation?,
-    favorites: List<FakeLocation>,
+    isFakeLocationSaved: Boolean,
     state: FakeLocationStateMachine.State,
-    mockLocationsEnabled: Boolean,
+    nextStep: NextStep,
+    setLocationPermissionStatus: (PermissionStatus) -> Unit,
+    setNotificationPermissionStatus: (PermissionStatus) -> Unit,
     setFakeLocation: (FakeLocation?) -> Unit,
     setState: (Boolean) -> Unit,
-    toggleSaved: () -> Unit,
+    toggleSave: () -> Unit,
     getLastLocation: suspend () -> Location?,
     onSearchClick: (LatLngBounds?) -> Unit
 ) {
-    val locationPermissionState = rememberLocationPermission()
-    LaunchedEffect(Unit) {
-        locationPermissionState.launchMultiplePermissionRequest()
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(fakeLocation?.latLng ?: SAN_FRANCISCO_LAT_LNG, 15f)
     }
 
-    val locationGranted = locationPermissionState.anyGranted
-    LaunchedEffect(locationGranted) {
-        // If marker is not already set, move map to user's last location.
-        if (locationGranted && fakeLocation == null) {
-            getLastLocation()?.latLng?.let { cameraPositionState.moveTo(it) }
+    // Location permission setup
+    var requestedLocationPermission by rememberSaveable { mutableStateOf(false) }
+    val locationPermission = rememberLocationPermission {
+        requestedLocationPermission = true
+    }
+    LaunchedEffect(requestedLocationPermission, locationPermission.status) {
+        if (requestedLocationPermission) {
+            setLocationPermissionStatus(locationPermission.status)
+        }
+    }
+    // Move map to user's last location, if no fake location is set.
+    LaunchedEffect(locationPermission.status.isGranted) {
+        if (locationPermission.status.isGranted && fakeLocation == null) {
+            getLastLocation()?.latLng?.let(cameraPositionState::moveTo)
+        }
+    }
+    // Request location permission on launch
+    LaunchedEffect(Unit) {
+        locationPermission.launchPermissionRequest()
+    }
+
+    // Notification permission setup
+    var requestedNotificationPermission by rememberSaveable { mutableStateOf(false) }
+    val notificationPermission = rememberNotificationsPermission {
+        requestedNotificationPermission = true
+    }
+    LaunchedEffect(requestedNotificationPermission, notificationPermission.status) {
+        if (requestedNotificationPermission) {
+            setNotificationPermissionStatus(notificationPermission.status)
         }
     }
 
-    var notificationPermissionRequested by remember { mutableStateOf(false) }
-    val notificationsPermissionState = rememberNotificationsPermission()
-
-    var showLocationPermissionDialog by remember { mutableStateOf(false) }
+    var showLocationPermissionNeededDialog by remember { mutableStateOf(false) }
+    var showNotificationPermissionNeededDialog by remember { mutableStateOf(false) }
     var showMockLocationSettingDialog by remember { mutableStateOf(false) }
+
+    // Store try-start as a counter, so we can increment it and continue the flow from the next required step
+    var tryStart by remember { mutableIntStateOf(0) }
+    LaunchedEffect(tryStart, nextStep::class) {
+        if (tryStart > 0) {
+            when (nextStep) {
+                is NextStep.LocationPermissionNeeded -> {
+                    if (nextStep.shouldRequest) {
+                        locationPermission.launchPermissionRequest()
+                    } else {
+                        showLocationPermissionNeededDialog = true
+                    }
+                }
+                is NextStep.NotificationPermissionNeeded -> {
+                    if (nextStep.shouldRequest) {
+                        notificationPermission.launchPermissionRequest()
+                    } else {
+                        showNotificationPermissionNeededDialog = true
+                    }
+                }
+                is NextStep.MockLocationSettingNeeded -> {
+                    showMockLocationSettingDialog = true
+                }
+                is NextStep.Ready -> {
+                    setState(true)
+                    tryStart = 0
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -159,17 +216,11 @@ fun MainLayout(
                 showSwitch = fakeLocation != null,
                 state = state,
                 onSwitchChecked = { checked ->
-                    if (!locationGranted) {
-                        showLocationPermissionDialog = true
-                    } else if (!mockLocationsEnabled) {
-                        showMockLocationSettingDialog = true
-                    } else if (!notificationsPermissionState.status.isGranted &&
-                        (!notificationPermissionRequested || notificationsPermissionState.status.shouldShowRationale)
-                    ) {
-                        notificationsPermissionState.launchPermissionRequest()
-                        notificationPermissionRequested = true
+                    if (checked) {
+                        tryStart++
                     } else {
-                        setState(checked)
+                        tryStart = 0
+                        setState(false)
                     }
                 }
             )
@@ -178,40 +229,49 @@ fun MainLayout(
         Box(modifier = Modifier.padding(p)) {
             Map(
                 cameraPositionState = cameraPositionState,
-                locationGranted = locationGranted,
+                hasLocationPermission = locationPermission.status.isGranted,
                 fakeLocation = fakeLocation,
                 setFakeLocation = setFakeLocation
             )
 
-            val isFakeLocationSaved by remember(fakeLocation, favorites) {
-                derivedStateOf {
-                    favorites.contains(fakeLocation)
-                }
-            }
             SearchBar(
                 cameraPositionState = cameraPositionState,
                 fakeLocation = fakeLocation,
-                starred = isFakeLocationSaved,
+                isFakeLocationSaved = isFakeLocationSaved,
                 onClick = {
                     onSearchClick(cameraPositionState.bounds)
                 },
                 onCloseClick = {
                     setFakeLocation(null)
                 },
-                onStarClick = toggleSaved
+                onStarClick = toggleSave
             )
         }
     }
 
-    if (showLocationPermissionDialog) {
-        LocationPermissionRequiredDialog(
-            onDismiss = { showLocationPermissionDialog = false }
+    if (showLocationPermissionNeededDialog) {
+        PermissionNeededDialog(
+            permissionName = stringResource(R.string.location),
+            onDismiss = {
+                showLocationPermissionNeededDialog = false
+            }
+        )
+    }
+
+    if (showNotificationPermissionNeededDialog) {
+        PermissionNeededDialog(
+            permissionName = stringResource(R.string.notification),
+            onDismiss = {
+                showNotificationPermissionNeededDialog = false
+            }
         )
     }
 
     if (showMockLocationSettingDialog) {
-        EnableMockLocationSettingDialog(
-            onDismiss = { showMockLocationSettingDialog = false }
+        MockLocationSettingDialog(
+            onDismiss = {
+                showMockLocationSettingDialog = false
+            }
         )
     }
 }
@@ -232,12 +292,12 @@ private fun TopBar(
         )
     )
     val backgroundColor = when (state) {
-        FakeLocationStateMachine.State.OFF -> MaterialTheme.colors.surface
-        FakeLocationStateMachine.State.ON -> pulseColor
+        OFF -> MaterialTheme.colors.surface
+        ON -> pulseColor
     }
     val contentColor = when (state) {
-        FakeLocationStateMachine.State.OFF -> MaterialTheme.colors.primaryOnSurface
-        FakeLocationStateMachine.State.ON -> MaterialTheme.colors.onPrimary
+        OFF -> MaterialTheme.colors.primaryOnSurface
+        ON -> MaterialTheme.colors.onPrimary
     }
     TopAppBar(
         title = {
@@ -280,7 +340,7 @@ private fun TopBar(
 private fun SearchBar(
     cameraPositionState: CameraPositionState,
     fakeLocation: FakeLocation?,
-    starred: Boolean,
+    isFakeLocationSaved: Boolean,
     onClick: () -> Unit,
     onCloseClick: () -> Unit,
     onStarClick: () -> Unit
@@ -377,7 +437,7 @@ private fun SearchBar(
                                 .fillMaxHeight()
                                 .padding(horizontal = 8.dp)
                         ) {
-                            if (starred) {
+                            if (isFakeLocationSaved) {
                                 Icon(
                                     imageVector = Icons.Filled.Star,
                                     contentDescription = stringResource(R.string.added_to_favorites),
@@ -402,16 +462,12 @@ private fun SearchBar(
 @Composable
 private fun Map(
     cameraPositionState: CameraPositionState,
-    locationGranted: Boolean,
+    hasLocationPermission: Boolean,
     fakeLocation: FakeLocation?,
     setFakeLocation: (FakeLocation?) -> Unit,
 ) {
-    val mapStyle = MapStyles()
-    val properties = remember(locationGranted, mapStyle) {
-        MapProperties(
-            mapStyleOptions = MapStyleOptions(mapStyle),
-            isMyLocationEnabled = locationGranted
-        )
+    val properties = remember(hasLocationPermission) {
+        MapProperties(isMyLocationEnabled = hasLocationPermission)
     }
     val uiSettings = remember {
         MapUiSettings(mapToolbarEnabled = false, tiltGesturesEnabled = false)
@@ -426,9 +482,19 @@ private fun Map(
                 setFakeLocation(FakeLocation(latitude = it.latitude, longitude = it.longitude))
             },
             contentPadding = PaddingValues(top = 72.dp),
+            mapColorScheme = ComposeMapColorScheme.FOLLOW_SYSTEM,
         ) {
-            fakeLocation?.let {
-                Marker(state = MarkerState(fakeLocation.latLng))
+            if (fakeLocation != null) {
+                val fakeLocationPosition = fakeLocation.latLng
+                Marker(state = remember(fakeLocationPosition) { MarkerState(fakeLocationPosition) })
+
+                // If position of new fake location is outside of the camera bounds (mostly likely because we searched for it),
+                // animate to the new point.
+                LaunchedEffect(fakeLocationPosition) {
+                    if (cameraPositionState.bounds?.contains(fakeLocationPosition) == false) {
+                        cameraPositionState.animateTo(fakeLocationPosition)
+                    }
+                }
             }
         }
     }
@@ -446,14 +512,15 @@ private fun MainLayoutPreview() {
     val myLatLng = LatLng(57.388322, 3.712944)
     AppTheme {
         MainLayout(
-            cameraPositionState = CameraPositionState(CameraPosition.fromLatLngZoom(myLatLng, 15f)),
             fakeLocation = fakeLocation,
-            favorites = listOf(fakeLocation),
+            isFakeLocationSaved = true,
             state = OFF,
-            mockLocationsEnabled = true,
+            nextStep = NextStep.Ready,
+            setLocationPermissionStatus = { },
+            setNotificationPermissionStatus = { },
             setFakeLocation = { },
             setState = { },
-            toggleSaved = { },
+            toggleSave = { },
             getLastLocation = { null },
             onSearchClick = { }
         )

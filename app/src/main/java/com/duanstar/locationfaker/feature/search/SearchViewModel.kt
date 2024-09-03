@@ -4,8 +4,6 @@ import com.duanstar.locationfaker.BaseViewModel
 import com.duanstar.locationfaker.fake_location.FakeLocation
 import com.duanstar.locationfaker.fake_location.FakeLocationStream
 import com.duanstar.locationfaker.feature.favorites.FavoritesManager
-import com.duanstar.locationfaker.utils.bounds
-import com.duanstar.locationfaker.utils.moveTo
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.libraries.places.api.model.AutocompletePrediction
@@ -15,7 +13,6 @@ import com.google.android.libraries.places.api.model.RectangularBounds
 import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.android.libraries.places.ktx.api.net.awaitFetchPlace
 import com.google.android.libraries.places.ktx.api.net.awaitFindAutocompletePredictions
-import com.google.maps.android.compose.CameraPositionState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -30,7 +27,6 @@ import javax.inject.Inject
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val cameraPositionState: CameraPositionState,
     private val fakeLocationStream: FakeLocationStream,
     private val favoritesManager: FavoritesManager,
     private val placesClient: PlacesClient
@@ -59,7 +55,6 @@ class SearchViewModel @Inject constructor(
             status.value = ApiStatus.OK
             try {
                 placesClient.awaitFindAutocompletePredictions {
-                    Timber.e("bias=${cameraPositionState.bounds}")
                     this@SearchViewModel.locationBias?.let {
                         locationBias = RectangularBounds.newInstance(it)
                     }
@@ -92,7 +87,6 @@ class SearchViewModel @Inject constructor(
 
     fun setFakeLocation(fakeLocation: FakeLocation) {
         fakeLocationStream.update(fakeLocation)
-        cameraPositionState.moveTo(fakeLocation.latLng)
     }
 
     suspend fun setFakeLocation(prediction: AutocompletePrediction): Boolean {
@@ -115,7 +109,6 @@ class SearchViewModel @Inject constructor(
             name = place.name
         )
         fakeLocationStream.update(fakeLocation)
-        cameraPositionState.moveTo(fakeLocation.latLng)
         sessionToken = null
         return true
     }

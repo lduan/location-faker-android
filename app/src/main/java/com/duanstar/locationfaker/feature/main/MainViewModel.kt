@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalPermissionsApi::class)
+
 package com.duanstar.locationfaker.feature.main
 
 import android.location.Geocoder
@@ -8,39 +10,65 @@ import com.duanstar.locationfaker.fake_location.FakeLocationStateMachine
 import com.duanstar.locationfaker.fake_location.FakeLocationStream
 import com.duanstar.locationfaker.feature.favorites.FavoritesManager
 import com.duanstar.locationfaker.launch
-import com.duanstar.locationfaker.settings.MockLocationSetting
+import com.duanstar.locationfaker.permission.isNotGranted
+import com.duanstar.locationfaker.settings.MockLocationSettingMonitor
 import com.duanstar.locationfaker.utils.awaitAddress
 import com.duanstar.locationfaker.utils.awaitLastLocation
 import com.duanstar.locationfaker.utils.toShortAddress
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.PermissionStatus
+import com.google.accompanist.permissions.shouldShowRationale
 import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.maps.android.compose.CameraPositionState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    val cameraPositionState: CameraPositionState,
     private val favoritesManager: FavoritesManager,
     private val geocoder: Geocoder,
     private val locationClient: FusedLocationProviderClient,
-    private val mockLocationSetting: MockLocationSetting,
+    private val mockLocationSettingMonitor: MockLocationSettingMonitor,
     private val stream: FakeLocationStream,
     private val stateMachine: FakeLocationStateMachine
 ) : BaseViewModel() {
 
-    val fakeLocation: StateFlow<FakeLocation?> = stream.fakeLocation
-    val favorites: StateFlow<List<FakeLocation>> = favoritesManager.favorites
-    val mockLocationsEnabled: StateFlow<Boolean> = mockLocationSetting.enabled
-    val state: StateFlow<FakeLocationStateMachine.State> = stateMachine.state
+    val fakeLocation = stream.fakeLocation
+    val state = stateMachine.state
+    val locationPermissionStatus = MutableStateFlow<PermissionStatus?>(null)
+    val notificationPermissionStatus = MutableStateFlow<PermissionStatus?>(null)
 
-    suspend fun getLastLocation(): Location? {
-        return try {
-            locationClient.awaitLastLocation()
-        } catch (e: SecurityException) {
-            Timber.e("Location permission not granted.")
-            null
+    val nextStep = combine(
+        locationPermissionStatus,
+        notificationPermissionStatus,
+        mockLocationSettingMonitor.enabled
+    ) { locationPermissionStatus, notificationPermissionStatus, mockLocationSettingEnabled ->
+        when {
+            locationPermissionStatus == null -> {
+                NextStep.LocationPermissionNeeded(true)
+            }
+            locationPermissionStatus.isNotGranted -> {
+                NextStep.LocationPermissionNeeded(locationPermissionStatus.shouldShowRationale)
+            }
+            notificationPermissionStatus == null -> {
+                NextStep.NotificationPermissionNeeded(true)
+            }
+            notificationPermissionStatus.isNotGranted -> {
+                NextStep.NotificationPermissionNeeded(notificationPermissionStatus.shouldShowRationale)
+            }
+            !mockLocationSettingEnabled -> {
+                NextStep.MockLocationSettingNeeded
+            }
+            else -> NextStep.Ready
+        }
+    }
+
+    fun isFakeLocationSaved(): Flow<Boolean> {
+        return combine(fakeLocation, favoritesManager.favorites) { fakeLocation, favorites ->
+            favorites.contains(fakeLocation)
         }
     }
 
@@ -69,10 +97,30 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun toggleSaved() {
+    fun toggleSave() {
         fakeLocation.value?.let {
             favoritesManager.addOrRemove(it)
         }
+    }
+
+    suspend fun getLastLocation(): Location? {
+        return try {
+            locationClient.awaitLastLocation()
+        } catch (e: SecurityException) {
+            Timber.e(e, "Permission not granted.")
+            null
+        }
+    }
+
+    sealed class NextStep {
+
+        data class LocationPermissionNeeded(val shouldRequest: Boolean) : NextStep()
+
+        data class NotificationPermissionNeeded(val shouldRequest: Boolean) : NextStep()
+
+        object MockLocationSettingNeeded : NextStep()
+
+        object Ready : NextStep()
     }
 }
 

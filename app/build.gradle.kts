@@ -80,8 +80,7 @@ dependencies {
 
     // Google
     implementation("com.google.accompanist:accompanist-permissions:0.30.1")
-    implementation("com.google.maps.android:maps-ktx:5.0.0")
-    implementation("com.google.maps.android:maps-compose:3.1.1")
+    implementation("com.google.maps.android:maps-compose:6.1.0")
     implementation("com.google.maps.android:places-ktx:3.0.0")
 
     // Lifecycle

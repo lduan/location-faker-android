@@ -34,12 +34,12 @@ class FavoritesManager @Inject constructor(
             .build()
             .adapter(type)
     }
-    private val _favorites = MutableStateFlow(read())
 
+    private val _favorites = MutableStateFlow(read())
     val favorites = _favorites.asStateFlow()
 
     init {
-        // Write changes to favorites to shared prefs
+        // Write any changes to favorites to shared prefs
         coroutineScope.launch {
             _favorites.drop(1).collect(::write)
         }
@@ -66,10 +66,10 @@ class FavoritesManager @Inject constructor(
             try {
                 adapter.fromJson(json)
             } catch (e: IOException) {
-                Timber.e(e, "Failed to read favorites. json=$json")
+                Timber.e(e, "Failed to read json=$json")
                 null
             } catch (e: JsonDataException) {
-                Timber.e(e, "Failed to read favorites. json=$json")
+                Timber.e(e, "Failed to read json=$json")
                 null
             }
         }.orEmpty()
